@@ -6,41 +6,41 @@ A React form library built around Zod schemas. You describe your data shape once
 
 ```tsx
 const schema = z.object({
-  name: z.string().min(2, 'Name is too short'),
-  email: z.email('Invalid email'),
-})
+  name: z.string().min(2, "Name is too short"),
+  email: z.email("Invalid email"),
+});
 
 function SignupForm() {
-  const { bind, getFieldError, handleSubmit, isSubmitting, error } =
+  const { bind, getFieldErrors, handleSubmit, isSubmitting, error } =
     useZuperForm({
       schema,
-      defaultValues: { name: '', email: '' },
+      defaultValues: { name: "", email: "" },
       handler: async (values) => {
-        await api.signup(values)
+        await api.signup(values);
       },
-    })
+    });
 
   return (
     <form onSubmit={handleSubmit}>
-      <input {...bind('name')} />
-      <span>{getFieldError('name')}</span>
+      <input {...bind("name")} />
+      <span>{getFieldErrors("name")[0]}</span>
 
-      <input {...bind('email')} />
-      <span>{getFieldError('email')}</span>
+      <input {...bind("email")} />
+      <span>{getFieldErrors("email")[0]}</span>
 
       <button type="submit" disabled={isSubmitting}>
         Submit
       </button>
       {error && <span>{error}</span>}
     </form>
-  )
+  );
 }
 ```
 
 ## Features
 
 - **Schema-driven by default** - pass a Zod schema and `defaultValues`, and the form state, validation, and types all derive from it automatically
-- **Full TypeScript inference** - field paths in `bind()`, `getFieldError()`, and `watch()` are typed against your schema
+- **Full TypeScript inference** - field paths in `bind()`, `getFieldErrors()`, and `watch()` are typed against your schema
 - **Flexible validation timing** - `mode` controls when a field is first validated (`onSubmit`, `onBlur`, or `onChange`), `reValidateMode` controls how it behaves once an error is already showing
 - **Nested objects and arrays** - dot-path syntax (`address.street`, `items.0.qty`) works throughout, and `useFieldArray` adds `append`, `remove`, and `move` for dynamic lists
 - **Automatic input coercion** - `z.number()` fields gets coerced from the DOM's string value automatically, so values.age is a real number, not `"42"`
@@ -61,7 +61,7 @@ npm install @zupertools/form-react
 ```tsx
 const {
   bind, // spreadable props for an input/textarea/select
-  getFieldError, // (path) => string | undefined
+  getFieldErrors, // (path) => string[] | undefined
   handleSubmit, // form onSubmit handler
   isSubmitting, // true while your handler is running
   error, // top-level error string, if any
@@ -79,10 +79,10 @@ const {
   handler: async (values) => {
     /* values is fully typed & already validated */
   },
-  mode: 'onSubmit', // when to run the first validation pass per field
-  reValidateMode: 'onChange', // once a field has an error, how it re-checks
+  mode: "onSubmit", // when to run the first validation pass per field
+  reValidateMode: "onChange", // once a field has an error, how it re-checks
   asyncDebounceMs: 300, // debounce time for async validation on onChange
-})
+});
 ```
 
 `values` passed into `handler` are the parsed output of `schema.safeParse`, not the raw form state, so if your schema transforms or refines data, `handler` sees the transformed result.
@@ -109,34 +109,36 @@ const schema = z.object({
     city: z.string().min(1),
   }),
   items: z.array(z.object({ qty: z.number().min(1) })),
-})
+});
 ```
 
 ```tsx
 <input {...bind('address.street')} />
-<span>{getFieldError('address.street')}</span>
+<span>{getFieldErrors('address.street')[0]}</span> // render the topmost error
+// or
+{getFieldErrors('address.street').map((e) => <span key={e}>{e}</span>)} // render all errors
 ```
 
 For arrays, pair `bind` with `useFieldArray`:
 
 ```tsx
-const form = useZuperForm({ schema, defaultValues, handler })
-const { fields, append, remove } = useFieldArray(form._internal, 'items')
+const form = useZuperForm({ schema, defaultValues, handler });
+const { fields, append, remove } = useFieldArray(form._internal, "items");
 
 {
   fields.map((f) => (
     <div key={f.id}>
       <input {...form.bind(`items.${f.index}.qty`)} type="number" />
-      <span>{form.getFieldError(`items.${f.index}.qty`)}</span>
+      <span>{form.getFieldErrors(`items.${f.index}.qty`)[0]}</span>
       <button type="button" onClick={() => remove(f.index)}>
         Remove
       </button>
     </div>
-  ))
+  ));
 }
-;<button type="button" onClick={() => append({ qty: 1 })}>
+<button type="button" onClick={() => append({ qty: 1 })}>
   Add item
-</button>
+</button>;
 ```
 
 ### Validation timing
@@ -146,9 +148,9 @@ useZuperForm({
   schema,
   defaultValues,
   handler,
-  mode: 'onBlur', // validate a field the first time it's blurred
-  reValidateMode: 'onChange', // after that, clear/update the error on every keystroke
-})
+  mode: "onBlur", // validate a field the first time it's blurred
+  reValidateMode: "onChange", // after that, clear/update the error on every keystroke
+});
 ```
 
 `mode` controls when a field is _first_ validated (`onSubmit`, `onBlur`, or `onChange`). `reValidateMode` controls what happens on every interaction _after_ a field already has an error. This lets a field stay quiet while the user is still typing their first pass, but respond immediately once something's flagged as wrong.
@@ -161,12 +163,12 @@ Use `setError` to set server-side/custom errors as either a top-level `error` or
 
 ```ts
 handler: async (values) => {
-  const res = await api.signup(values)
-  if (res.error === 'username_taken') {
-    setError('name', 'That name is already in use')
-    return
+  const res = await api.signup(values);
+  if (res.error === "username_taken") {
+    setError("name", "That name is already in use");
+    return;
   }
-}
+};
 ```
 
 To set the top-level `error`, pass one argument: `setError('Something went wrong')`.
