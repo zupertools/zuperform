@@ -1,0 +1,183 @@
+import { useRef, useState, useSyncExternalStore } from 'react'
+import z, { ZodBoolean, ZodObject } from 'zod'
+import { createFormStore, getAsyncFields } from '@zupertools/form-core'
+import type { Paths, PathValue } from '@zupertools/form-core'
+import { flattenPaths, getIn } from '@zupertools/form-core'
+import { coerceToSchema, getSchemaAtPath } from '@zupertools/form-core'
+import type { ArrayStoreAccess } from '@zupertools/form-core'
+
+type ValidationMode = 'onSubmit' | 'onChange' | 'onBlur'
+
+interface UseZuperFormProps<T extends ZodObject> {
+  schema: T
+  defaultValues: z.infer<T>
+  handler: (values: z.infer<T>) => Promise<void>
+  mode?: ValidationMode
+  reValidateMode?: ValidationMode
+  asyncDebounceMs?: number
+}
+
+type FormInputElement =
+  | HTMLInputElement
+  | HTMLTextAreaElement
+  | HTMLSelectElement
+
+export function useZuperForm<T extends ZodObject>({
+  schema,
+  defaultValues,
+  handler,
+  mode = 'onSubmit',
+  reValidateMode = 'onChange',
+  asyncDebounceMs = 300,
+}: UseZuperFormProps<T>) {
+  type Values = z.infer<T>
+  const storeRef = useRef(createFormStore(schema, defaultValues))
+  const store = storeRef.current
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [error, setTopLevelError] = useState<string | null>(null)
+
+  const asyncFieldsRef = useRef<Set<string>>(getAsyncFields(schema))
+
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
+    {},
+  )
+
+  const { values, errors, touched } = useSyncExternalStore(
+    store.subscribe,
+    store.getSnapshot,
+  )
+
+  function debouncedValidateField(name: string) {
+    clearTimeout(debounceTimers.current[name])
+    if (asyncFieldsRef.current.has(name)) {
+      debounceTimers.current[name] = setTimeout(() => {
+        store.validateField(name)
+      }, asyncDebounceMs)
+    } else {
+      store.validateField(name)
+    }
+  }
+
+  function bind<P extends Paths<Values>>(name: P) {
+    const fieldSchema = getSchemaAtPath(schema, name)
+    const value = getIn<PathValue<Values, P>>(values, name)
+    const isCheckbox = fieldSchema instanceof ZodBoolean
+
+    function onChange(e: React.ChangeEvent<FormInputElement>) {
+      const raw =
+        e.target instanceof HTMLInputElement && e.target.type === 'checkbox'
+          ? e.target.checked
+          : e.target.value
+      store.setValue(name, coerceToSchema(fieldSchema, raw))
+
+      const currentHasError = Boolean(store.getErrors()[name])
+      if (currentHasError && reValidateMode === 'onChange') {
+        debouncedValidateField(name)
+      } else if (!currentHasError && mode === 'onChange') {
+        debouncedValidateField(name)
+      }
+    }
+
+    function onBlur() {
+      store.touch(name)
+      const currentHasError = Boolean(store.getErrors()[name])
+      if (currentHasError && reValidateMode === 'onBlur') {
+        store.validateField(name)
+      } else if (!currentHasError && mode === 'onBlur') {
+        store.validateField(name)
+      }
+    }
+
+    return {
+      name,
+      ...(isCheckbox
+        ? { checked: Boolean(value) }
+        : { value: (value ?? '') as string }),
+      onChange,
+      onBlur,
+    }
+  }
+
+  function getFieldErrors<P extends Paths<Values>>(name: P) {
+    return errors[name]
+  }
+
+  function watch(): Values
+  function watch<P extends Paths<Values>>(name?: P): PathValue<Values, P>
+  function watch<P extends Paths<Values>>(name?: P) {
+    if (name === undefined) return values
+    return getIn<PathValue<Values, P>>(values, name)
+  }
+
+  function reset(nextValues?: Values) {
+    store.reset(nextValues)
+  }
+
+  function resetField<P extends Paths<Values>>(
+    name: P,
+    nextValue?: PathValue<Values, P>,
+  ) {
+    store.resetField(name, nextValue)
+  }
+
+  function setValue<P extends Paths<Values>>(
+    name: P,
+    value: PathValue<Values, P>,
+  ) {
+    store.setValue(name, value)
+  }
+
+  const dirtyFields = flattenPaths(values).reduce(
+    (acc, path) => {
+      if (store.isDirty(path)) acc[path] = true
+      return acc
+    },
+    {} as Record<string, boolean>,
+  )
+  const isDirty = Object.keys(dirtyFields).length > 0
+
+  function setError(message: string): void
+  function setError(path: Paths<Values>, message: string): void
+  function setError(pathOrMessage: string, message?: string): void {
+    if (message === undefined) {
+      setTopLevelError(pathOrMessage)
+    } else {
+      store.addFieldError(pathOrMessage, message)
+    }
+  }
+
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const result = await store.validate()
+    if (!result.success) return
+
+    setIsSubmitting(true)
+    setTopLevelError(null)
+    try {
+      await handler(result.data)
+    } catch (err) {
+      setTopLevelError(
+        err instanceof Error ? err.message : 'Something went wrong',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return {
+    bind,
+    getFieldErrors,
+    handleSubmit,
+    isSubmitting,
+    error,
+    setError,
+    watch,
+    reset,
+    resetField,
+    setValue,
+    touchedFields: touched,
+    dirtyFields,
+    isDirty,
+    _internal: store as ArrayStoreAccess<Values>,
+  }
+}

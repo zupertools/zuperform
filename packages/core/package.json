@@ -1,0 +1,46 @@
+{
+  "name": "@zupertools/form-core",
+  "version": "0.1.0",
+  "description": "Framework-agnostic core for zuperform",
+  "keywords": [
+    "form",
+    "typescript",
+    "validation",
+    "zod",
+    "zuperform"
+  ],
+  "license": "MIT",
+  "author": "Theodor Lundin",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.10",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "zod": ">=4"
+  }
+}
