@@ -1,6 +1,6 @@
 {
   "name": "@zupertools/form-react",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "zuperform: React form library based on Zod",
   "keywords": [
     "form",
