@@ -12,6 +12,9 @@
   ],
   "license": "MIT",
   "author": "Theodor Lundin",
+  "repository": {
+    "url": "https://github.com/zupertools/zuperform/"
+  },
   "files": [
     "dist"
   ],
