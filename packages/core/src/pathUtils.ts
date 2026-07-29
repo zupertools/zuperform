@@ -18,18 +18,24 @@ export function setIn<T extends object>(
   path: string,
   value: unknown,
 ): T {
-  const keys = path.split('.')
-  const [head, ...rest] = keys
+  const [head, ...rest] = path.split('.')
 
   if (rest.length === 0) {
-    return { ...obj, [head]: value }
+    const clone = (Array.isArray(obj) ? [...obj] : { ...obj }) as any
+    clone[head] = value
+    return clone as T
   }
 
-  const existing = ((obj as Record<string, unknown>)[head] ?? {}) as Record<
-    string,
-    unknown
-  >
-  return { ...obj, [head]: setIn(existing, rest.join('.'), value) }
+  const existing = (obj as Record<string, unknown>)[head]
+  const next = setIn(
+    Array.isArray(existing) ? existing : (existing ?? {}),
+    rest.join('.'),
+    value,
+  )
+
+  const clone = (Array.isArray(obj) ? [...obj] : { ...obj }) as any
+  clone[head] = next
+  return clone as T
 }
 
 export function flattenPaths(
