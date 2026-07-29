@@ -148,10 +148,14 @@ export function useZuperForm<T extends ZodObject>({
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
-    const result = await store.validate()
-    if (!result.success) return
-
     setIsSubmitting(true)
+
+    const result = await store.validate()
+    if (!result.success) {
+      setIsSubmitting(false)
+      return
+    }
+
     setTopLevelError(null)
     try {
       await handler(result.data)
