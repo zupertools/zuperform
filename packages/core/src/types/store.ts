@@ -12,6 +12,7 @@ export interface FormStore<T> {
   isTouched: (path: string) => boolean
   isDirty: (path: string) => boolean
   setValue: (path: string, value: unknown) => void
+  setRawValue: (path: string, raw: string | boolean) => void
   touch: (path: string) => void
   reset: (nextValues?: T) => void
   resetField: (path: string, nextValue?: unknown) => void

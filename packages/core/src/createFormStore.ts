@@ -3,6 +3,7 @@ import { getIn, setIn } from './pathUtils'
 import { FormStore } from './types/store'
 import { validateAll, validateField as validateFieldAt } from './validate'
 import { deepEqual } from './deepEqual'
+import { coerceToSchema, getSchemaAtPath } from './schemaIntrospection'
 
 export function createFormStore<T extends ZodObject>(
   schema: T,
@@ -33,9 +34,20 @@ export function createFormStore<T extends ZodObject>(
       return !deepEqual(current, original)
     },
     setValue: (path: string, value: unknown) => {
+      const values = setIn(snapshot.values, path, value)
       snapshot = {
         ...snapshot,
-        values: setIn(snapshot.values, path, value),
+        values: values,
+      }
+      notify()
+    },
+    setRawValue: (path: string, raw: string | boolean) => {
+      const fieldSchema = getSchemaAtPath(schema, path)
+      const value = coerceToSchema(fieldSchema, raw)
+      const values = setIn(snapshot.values, path, value)
+      snapshot = {
+        ...snapshot,
+        values: values,
       }
       notify()
     },
@@ -48,8 +60,9 @@ export function createFormStore<T extends ZodObject>(
       notify()
     },
     reset: (nextValues?: z.infer<T>) => {
+      const values = nextValues ? { ...nextValues } : { ...initialValues }
       snapshot = {
-        values: nextValues ? { ...nextValues } : { ...initialValues },
+        values: values,
         errors: {} as Record<string, string[]>,
         touched: {} as Record<string, boolean>,
       }
@@ -60,12 +73,15 @@ export function createFormStore<T extends ZodObject>(
       const nextTouched = { ...snapshot.touched }
       delete nextErrors[path]
       delete nextTouched[path]
+
+      const values = setIn(
+        snapshot.values,
+        path,
+        nextValue ?? getIn(initialValues, path),
+      )
+
       snapshot = {
-        values: setIn(
-          snapshot.values,
-          path,
-          nextValue ?? getIn(initialValues, path),
-        ),
+        values: values,
         errors: nextErrors,
         touched: nextTouched,
       }

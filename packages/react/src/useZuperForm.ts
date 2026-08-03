@@ -2,8 +2,8 @@ import { useRef, useState, useSyncExternalStore } from 'react'
 import z, { ZodBoolean, ZodObject } from 'zod'
 import { createFormStore, getAsyncFields } from '@zupertools/form-core'
 import type { Paths, PathValue } from '@zupertools/form-core'
-import { flattenPaths, getIn } from '@zupertools/form-core'
-import { coerceToSchema, getSchemaAtPath } from '@zupertools/form-core'
+import { flattenPaths, getIn, getLeafValue } from '@zupertools/form-core'
+import { getSchemaAtPath, stringifyValue } from '@zupertools/form-core'
 import type { ArrayStoreAccess } from '@zupertools/form-core'
 
 type ValidationMode = 'onSubmit' | 'onChange' | 'onBlur'
@@ -42,10 +42,21 @@ export function useZuperForm<T extends ZodObject>({
     {},
   )
 
+  const rawValuesRef = useRef<Record<string, string | boolean>>({})
+
   const { values, errors, touched } = useSyncExternalStore(
     store.subscribe,
     store.getSnapshot,
   )
+
+  function clearRawValue(path: string) {
+    const prefix = `${path}.`
+    for (const key of Object.keys(rawValuesRef.current)) {
+      if (key === path || key.startsWith(prefix)) {
+        delete rawValuesRef.current[key]
+      }
+    }
+  }
 
   function debouncedValidateField(name: string) {
     clearTimeout(debounceTimers.current[name])
@@ -60,7 +71,8 @@ export function useZuperForm<T extends ZodObject>({
 
   function bind<P extends Paths<Values>>(name: P) {
     const fieldSchema = getSchemaAtPath(schema, name)
-    const value = getIn<PathValue<Values, P>>(values, name)
+    const coercedValue = getLeafValue(values, name)
+    const rawValue = rawValuesRef.current[name]
     const isCheckbox = fieldSchema instanceof ZodBoolean
 
     function onChange(e: React.ChangeEvent<FormInputElement>) {
@@ -68,7 +80,8 @@ export function useZuperForm<T extends ZodObject>({
         e.target instanceof HTMLInputElement && e.target.type === 'checkbox'
           ? e.target.checked
           : e.target.value
-      store.setValue(name, coerceToSchema(fieldSchema, raw))
+      rawValuesRef.current[name] = raw
+      store.setRawValue(name, raw)
 
       const currentHasError = Boolean(store.getErrors()[name])
       if (currentHasError && reValidateMode === 'onChange') {
@@ -88,14 +101,24 @@ export function useZuperForm<T extends ZodObject>({
       }
     }
 
-    return {
+    const props = {
       name,
       ...(isCheckbox
-        ? { checked: Boolean(value) }
-        : { value: (value ?? '') as string }),
+        ? {
+            checked:
+              typeof rawValue === 'boolean' ? rawValue : Boolean(coercedValue),
+          }
+        : {
+            value:
+              typeof rawValue === 'string'
+                ? rawValue
+                : stringifyValue(coercedValue),
+          }),
       onChange,
       onBlur,
     }
+
+    return props
   }
 
   function getFieldErrors<P extends Paths<Values>>(name: P) {
@@ -110,6 +133,7 @@ export function useZuperForm<T extends ZodObject>({
   }
 
   function reset(nextValues?: Values) {
+    rawValuesRef.current = {}
     store.reset(nextValues)
   }
 
@@ -117,6 +141,7 @@ export function useZuperForm<T extends ZodObject>({
     name: P,
     nextValue?: PathValue<Values, P>,
   ) {
+    clearRawValue(name)
     store.resetField(name, nextValue)
   }
 
@@ -124,6 +149,7 @@ export function useZuperForm<T extends ZodObject>({
     name: P,
     value: PathValue<Values, P>,
   ) {
+    clearRawValue(name)
     store.setValue(name, value)
   }
 
@@ -168,6 +194,15 @@ export function useZuperForm<T extends ZodObject>({
     }
   }
 
+  const internalStore: ArrayStoreAccess<Values> = {
+    subscribe: store.subscribe,
+    getSnapshot: store.getSnapshot,
+    setValue: (path, value) => {
+      clearRawValue(path)
+      store.setValue(path, value)
+    },
+  }
+
   return {
     bind,
     getFieldErrors,
@@ -182,6 +217,6 @@ export function useZuperForm<T extends ZodObject>({
     touchedFields: touched,
     dirtyFields,
     isDirty,
-    _internal: store as ArrayStoreAccess<Values>,
+    _internal: internalStore,
   }
 }

@@ -1,3 +1,5 @@
+import type { LeafValue } from './types/values'
+
 export function getIn<TValue = unknown>(
   obj: Record<string, unknown>,
   path: string,
@@ -11,6 +13,13 @@ export function getIn<TValue = unknown>(
           : (acc[key] as Record<string, unknown> | undefined),
       obj,
     ) as TValue | undefined
+}
+
+export function getLeafValue(
+  obj: Record<string, unknown>,
+  path: string,
+): LeafValue {
+  return getIn<LeafValue>(obj, path)
 }
 
 export function setIn<T extends object>(

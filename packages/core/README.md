@@ -35,6 +35,7 @@ store.isTouched(path)
 
 // Write state
 store.setValue(path, value)
+store.setRawValue(path, rawValue) // coerces rawValue against the field's schema first
 store.touch(path)
 store.reset(nextValues?)
 store.resetField(path, nextValue?)
