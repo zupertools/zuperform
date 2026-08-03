@@ -11,13 +11,17 @@ export type Paths<T> =
         }[keyof T & string]
       : never
 
-export type PathValue<
-  T,
-  P extends string,
-> = P extends `${infer K}.${infer Rest}`
-  ? K extends keyof T
-    ? PathValue<T[K], Rest>
-    : never
-  : P extends keyof T
-    ? T[P]
-    : never
+export type PathValue<T, P extends string> =
+  T extends Array<infer U>
+    ? P extends `${number}.${infer Rest}`
+      ? PathValue<U, Rest>
+      : P extends `${number}`
+        ? U
+        : never
+    : P extends `${infer K}.${infer Rest}`
+      ? K extends keyof T
+        ? PathValue<T[K], Rest>
+        : never
+      : P extends keyof T
+        ? T[P]
+        : never

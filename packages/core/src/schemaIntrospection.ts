@@ -1,4 +1,4 @@
-import z, { ZodType } from 'zod'
+import z, { ZodDate, ZodType } from 'zod'
 import {
   ZodArray,
   ZodBoolean,
@@ -8,6 +8,7 @@ import {
   ZodObject,
   ZodOptional,
 } from 'zod'
+import type { LeafValue } from './types/values'
 
 type AnyZodType = z.core.$ZodType
 
@@ -54,5 +55,12 @@ export function coerceToSchema(
   if (!schema) return raw
   if (schema instanceof ZodNumber) return raw === '' ? '' : Number(raw)
   if (schema instanceof ZodBoolean) return Boolean(raw)
+  if (schema instanceof ZodDate) return new Date(raw as string)
   return raw
+}
+
+export function stringifyValue(value: LeafValue): string {
+  if (value instanceof Date) return value.toISOString().split('T')[0]
+  if (value === null || value === undefined) return ''
+  return String(value)
 }

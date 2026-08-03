@@ -43,7 +43,7 @@ function SignupForm() {
 - **Full TypeScript inference** - field paths in `bind()`, `getFieldErrors()`, and `watch()` are typed against your schema
 - **Flexible validation timing** - `mode` controls when a field is first validated (`onSubmit`, `onBlur`, or `onChange`), `reValidateMode` controls how it behaves once an error is already showing
 - **Nested objects and arrays** - dot-path syntax (`address.street`, `items.0.qty`) works throughout, and `useFieldArray` adds `append`, `remove`, and `move` for dynamic lists
-- **Automatic input coercion** - `z.number()` fields gets coerced from the DOM's string value automatically, so values.age is a real number, not `"42"`
+- **Automatic input coercion** - `z.number()` fields gets coerced from the DOM's string value automatically, so values.age is a real number, not `"42"`. The input itself still shows exactly what you typed, even mid-edit (e.g. `"1."` while typing a decimal).
 - **Server-side/custom error integration** - `setError('field', 'message')` or `setError('top-level message')` feeds server responses or custom errors back into the same error state the form already tracks
 - **Async validation** - schemas with `.refine(async ...)` work without any extra config and automatically debounce
 - **Dirty and touched tracking** - `isDirty`, `dirtyFields`, and `touchedFields` are derived from a deep comparison against the original `defaultValues`
