@@ -18,7 +18,7 @@ export interface FormStore<T> {
   resetField: (path: string, nextValue?: unknown) => void
   validate: () => Promise<ZodSafeParseResult<T>>
   validateField: (path: string) => Promise<string[] | undefined>
-  addFieldError: (path: string, message: string) => void
+  setFieldError: (path: string, messages: string[], append?: boolean) => void
   clearFieldErrors: (path: string) => void
   subscribe: (cb: () => void) => () => void
 }

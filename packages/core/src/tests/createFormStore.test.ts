@@ -295,34 +295,41 @@ describe('reset', () => {
   })
 })
 
-describe('addFieldError', () => {
+describe('setFieldError', () => {
   it('adds an error message to a field', () => {
     const store = createFormStore(schema, { name: 'Theo', email: 'a@b.com' })
-    store.addFieldError('name', 'Custom error')
+    store.setFieldError('name', ['Custom error'])
     expect(store.getErrors().name).toStrictEqual(['Custom error'])
   })
 
   it('does not affect errors on other fields', () => {
     const store = createFormStore(schema, { name: 'Theo', email: 'a@b.com' })
-    store.addFieldError('name', 'Custom error')
+    store.setFieldError('name', ['Custom error'])
     expect(store.getErrors().email).toBeUndefined()
   })
 
-  it('keeps existing errors for the same field', async () => {
+  it('appends to existing errors for the same field', async () => {
     const store = createFormStore(schema, { name: 'T', email: '' })
     await store.validateField('name')
-    store.addFieldError('name', 'Second error')
+    store.setFieldError('name', ['Second error'], true)
     expect(store.getErrors().name).toStrictEqual([
       'Name is too short',
       'Second error',
     ])
   })
 
+  it('replaces existing errors for the same field', async () => {
+    const store = createFormStore(schema, { name: 'T', email: '' })
+    await store.validateField('name')
+    store.setFieldError('name', ['Second error'])
+    expect(store.getErrors().name).toStrictEqual(['Second error'])
+  })
+
   it('notifies subscribers', () => {
     const store = createFormStore(schema, { name: '', email: '' })
     const listener = vi.fn()
     store.subscribe(listener)
-    store.addFieldError('name', 'Custom error')
+    store.setFieldError('name', ['Custom error'])
     expect(listener).toHaveBeenCalledTimes(1)
   })
 })

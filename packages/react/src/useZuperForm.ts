@@ -162,14 +162,21 @@ export function useZuperForm<T extends ZodObject>({
   )
   const isDirty = Object.keys(dirtyFields).length > 0
 
-  function setError(message: string): void
-  function setError(path: Paths<Values>, message: string): void
-  function setError(pathOrMessage: string, message?: string): void {
-    if (message === undefined) {
-      setTopLevelError(pathOrMessage)
+  function setError(messages: string[]): void
+  function setError(path: Paths<Values>, messages: string[]): void
+  function setError(
+    pathOrMessage: Paths<Values> | string[],
+    messages?: string[],
+  ): void {
+    if (messages === undefined) {
+      setTopLevelError(pathOrMessage[0])
     } else {
-      store.addFieldError(pathOrMessage, message)
+      store.setFieldError(pathOrMessage as Paths<Values>, messages)
     }
+  }
+
+  function addFieldError(path: Paths<Values>, messages: string[]): void {
+    store.setFieldError(path, messages, true)
   }
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
@@ -210,6 +217,7 @@ export function useZuperForm<T extends ZodObject>({
     isSubmitting,
     error,
     setError,
+    addFieldError,
     watch,
     reset,
     resetField,

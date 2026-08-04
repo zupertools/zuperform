@@ -424,13 +424,13 @@ describe('setValue', () => {
 describe('setError', () => {
   it('sets a top-level error when called with a single string', () => {
     const { result } = setup()
-    act(() => result.current.setError('Something went wrong'))
+    act(() => result.current.setError(['Something went wrong']))
     expect(result.current.error).toBe('Something went wrong')
   })
 
   it('sets a field error when called with a path and a message', () => {
     const { result } = setup()
-    act(() => result.current.setError('name', 'Custom error'))
+    act(() => result.current.setError('name', ['Custom error']))
     expect(result.current.getFieldErrors('name')).toStrictEqual([
       'Custom error',
     ])
@@ -438,8 +438,79 @@ describe('setError', () => {
 
   it('field error from setError does not affect other fields', () => {
     const { result } = setup()
-    act(() => result.current.setError('name', 'Custom error'))
+    act(() => result.current.setError('name', ['Custom error']))
     expect(result.current.getFieldErrors('email')).toBeUndefined()
+  })
+
+  it('replaces existing field errors when setError is called with new messages', () => {
+    const { result } = setup()
+    act(() => result.current.setError('name', ['First error']))
+    expect(result.current.getFieldErrors('name')).toStrictEqual(['First error'])
+    act(() => result.current.setError('name', ['Second error']))
+    expect(result.current.getFieldErrors('name')).toStrictEqual([
+      'Second error',
+    ])
+  })
+
+  it('triggers a re-render when getFieldErrors is called after setError', () => {
+    const { result } = setup()
+    act(() => result.current.setError('name', ['Custom error']))
+    // Verify getFieldErrors returns the new error (would be undefined if not re-rendered)
+    expect(result.current.getFieldErrors('name')).toStrictEqual([
+      'Custom error',
+    ])
+  })
+})
+
+describe('addFieldError', () => {
+  it('adds an error message to a field', () => {
+    const { result } = setup()
+    act(() => result.current.addFieldError('name', ['Custom error']))
+    expect(result.current.getFieldErrors('name')).toStrictEqual([
+      'Custom error',
+    ])
+  })
+
+  it('appends to existing errors for the same field', async () => {
+    const { result } = setup()
+    await act(async () => {
+      await result.current.handleSubmit(fakeSubmitEvent())
+    })
+    expect(result.current.getFieldErrors('name')).toStrictEqual([
+      'Name is too short',
+    ])
+    act(() => result.current.addFieldError('name', ['Additional error']))
+    expect(result.current.getFieldErrors('name')).toStrictEqual([
+      'Name is too short',
+      'Additional error',
+    ])
+  })
+
+  it('does not affect errors on other fields', () => {
+    const { result } = setup()
+    act(() => result.current.addFieldError('name', ['Custom error']))
+    expect(result.current.getFieldErrors('email')).toBeUndefined()
+  })
+
+  it('triggers a re-render when getFieldErrors is called after addFieldError', () => {
+    const { result } = setup()
+    act(() => result.current.addFieldError('name', ['Custom error']))
+    // Verify getFieldErrors returns the new error (would be undefined if not re-rendered)
+    expect(result.current.getFieldErrors('name')).toStrictEqual([
+      'Custom error',
+    ])
+  })
+
+  it('allows adding multiple errors one at a time', () => {
+    const { result } = setup()
+    act(() => result.current.addFieldError('name', ['First error']))
+    act(() => result.current.addFieldError('name', ['Second error']))
+    act(() => result.current.addFieldError('name', ['Third error']))
+    expect(result.current.getFieldErrors('name')).toStrictEqual([
+      'First error',
+      'Second error',
+      'Third error',
+    ])
   })
 })
 
