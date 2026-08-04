@@ -1,5 +1,11 @@
 # @zupertools/form-react
 
+## 0.2.2
+
+### Patch Changes
+
+- 833591f: Fixed the message parameter of setError() when setting top-level errors to accept a string instead of an array of strings.
+
 ## 0.2.1
 
 ### Patch Changes
