@@ -1,5 +1,13 @@
 # @zupertools/form-react
 
+## 0.2.1
+
+### Patch Changes
+
+- 1c078ea: Split setError() to setError() and addFieldError() and updated parameters to use arrays instead of strings in line with the core.
+- Updated dependencies [1c078ea]
+  - @zupertools/form-core@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

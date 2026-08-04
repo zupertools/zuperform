@@ -1,5 +1,11 @@
 # @zupertools/form-core
 
+## 0.2.1
+
+### Patch Changes
+
+- 1c078ea: Updated addFieldError() to replace snapshot object instead of mutating it to ensure the object reference changes.
+
 ## 0.2.0
 
 ### Minor Changes
