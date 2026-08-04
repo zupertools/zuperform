@@ -179,6 +179,10 @@ export function useZuperForm<T extends ZodObject>({
     store.setFieldError(path, messages, true)
   }
 
+  function clearError(path?: Paths<Values>): void {
+    store.clearErrors(path)
+  }
+
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
     setIsSubmitting(true)
@@ -218,6 +222,7 @@ export function useZuperForm<T extends ZodObject>({
     error,
     setError,
     addFieldError,
+    clearError,
     watch,
     reset,
     resetField,

@@ -117,12 +117,17 @@ export function createFormStore<T extends ZodObject>(
       snapshot = { ...snapshot, errors: nextErrors }
       notify()
     },
-    clearFieldErrors: (path: string) => {
-      if (!(path in snapshot.errors)) return
-      const nextErrors = { ...snapshot.errors }
-      delete nextErrors[path]
-      snapshot = { ...snapshot, errors: nextErrors }
-      notify()
+    clearErrors: (path?: string) => {
+      if (!path) {
+        snapshot = { ...snapshot, errors: {} }
+        notify()
+      } else {
+        if (!(path in snapshot.errors)) return
+        const nextErrors = { ...snapshot.errors }
+        delete nextErrors[path]
+        snapshot = { ...snapshot, errors: nextErrors }
+        notify()
+      }
     },
     subscribe: (cb: () => void) => {
       listeners.add(cb)

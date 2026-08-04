@@ -334,18 +334,25 @@ describe('setFieldError', () => {
   })
 })
 
-describe('clearFieldErrors', () => {
+describe('clearErrors', () => {
+  it('clears all errors when no path is provided', async () => {
+    const store = createFormStore(schema, { name: 'T', email: '' })
+    await store.validateField('name')
+    store.clearErrors()
+    expect(store.getErrors()).toBeUndefined()
+  })
+
   it('removes an existing error for a field', async () => {
     const store = createFormStore(schema, { name: 'T', email: '' })
     await store.validateField('name')
-    store.clearFieldErrors('name')
+    store.clearErrors('name')
     expect(store.getErrors().name).toBeUndefined()
   })
 
   it('does not affect errors on other fields', async () => {
     const store = createFormStore(schema, { name: 'T', email: 'not-an-email' })
     await store.validate()
-    store.clearFieldErrors('name')
+    store.clearErrors('name')
     expect(store.getErrors().email).toBeDefined()
   })
 
@@ -353,7 +360,7 @@ describe('clearFieldErrors', () => {
     const store = createFormStore(schema, { name: 'Theo', email: '' })
     const listener = vi.fn()
     store.subscribe(listener)
-    store.clearFieldErrors('name')
+    store.clearErrors('name')
     expect(listener).not.toHaveBeenCalled()
   })
 
@@ -362,7 +369,7 @@ describe('clearFieldErrors', () => {
     await store.validateField('name')
     const listener = vi.fn()
     store.subscribe(listener)
-    store.clearFieldErrors('name')
+    store.clearErrors('name')
     expect(listener).toHaveBeenCalledTimes(1)
   })
 })
