@@ -44,7 +44,7 @@ function SignupForm() {
 - **Flexible validation timing** - `mode` controls when a field is first validated (`onSubmit`, `onBlur`, or `onChange`), `reValidateMode` controls how it behaves once an error is already showing
 - **Nested objects and arrays** - dot-path syntax (`address.street`, `items.0.qty`) works throughout, and `useFieldArray` adds `append`, `remove`, and `move` for dynamic lists
 - **Automatic input coercion** - `z.number()` fields gets coerced from the DOM's string value automatically, so values.age is a real number, not `"42"`. The input itself still shows exactly what you typed, even mid-edit (e.g. `"1."` while typing a decimal).
-- **Server-side/custom error integration** - `setError('field', 'message')` or `setError('top-level message')` feeds server responses or custom errors back into the same error state the form already tracks
+- **Server-side/custom error integration** - `setError('top-level message')`, `setError('field', ['message'])` or `addFieldError('field', ['message'])` feeds server responses or custom errors back into the same error state the form already tracks
 - **Async validation** - schemas with `.refine(async ...)` work without any extra config and automatically debounce
 - **Dirty and touched tracking** - `isDirty`, `dirtyFields`, and `touchedFields` are derived from a deep comparison against the original `defaultValues`
 
@@ -66,6 +66,7 @@ const {
   isSubmitting, // true while your handler is running
   error, // top-level error string, if any
   setError, // set a field or top-level error manually
+  addFieldError, // add an error message to a field
   reset, // reset to defaults, or to new values
   resetField, // reset a single field to default, or to a new value
   setValue, // set a field value manually
@@ -159,13 +160,15 @@ Validation is async throughout, so schemas with `.refine(async ...)` work withou
 
 ### Server-side errors
 
-Use `setError` to set server-side/custom errors as either a top-level `error` or a field error.
+Use `setError` to set server-side/custom errors as either a top-level `error` or a field error, alternatively use `addFieldError` to add an error message to a field.
 
 ```ts
 handler: async (values) => {
   const res = await api.signup(values);
   if (res.error === "username_taken") {
-    setError("name", "That name is already in use");
+    setError("name", ["That name is already in use"]);
+    // or
+    addFieldError("name", ["That name is already in use"]);
     return;
   }
 };

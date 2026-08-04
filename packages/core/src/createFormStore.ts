@@ -105,8 +105,16 @@ export function createFormStore<T extends ZodObject>(
       notify()
       return messages
     },
-    addFieldError: (path: string, message: string) => {
-      ;(snapshot.errors[path] ??= []).push(message)
+    setFieldError: (
+      path: string,
+      messages: string[],
+      append: boolean = false,
+    ) => {
+      const nextErrors = { ...snapshot.errors }
+      nextErrors[path] = append
+        ? [...(nextErrors[path] ?? []), ...messages]
+        : messages
+      snapshot = { ...snapshot, errors: nextErrors }
       notify()
     },
     clearFieldErrors: (path: string) => {

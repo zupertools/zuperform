@@ -43,7 +43,7 @@ store.resetField(path, nextValue?)
 // Validation
 store.validate()            // full async parse, returns ZodSafeParseResult
 store.validateField(path)   // async, returns error message or undefined
-store.addFieldError(path, message)
+store.setFieldError(path, message, append)
 store.clearFieldErrors(path)
 
 // Subscribe to changes (compatible with useSyncExternalStore or similar)
