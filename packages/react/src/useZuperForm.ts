@@ -162,14 +162,14 @@ export function useZuperForm<T extends ZodObject>({
   )
   const isDirty = Object.keys(dirtyFields).length > 0
 
-  function setError(messages: string[]): void
+  function setError(message: string): void
   function setError(path: Paths<Values>, messages: string[]): void
   function setError(
-    pathOrMessage: Paths<Values> | string[],
+    pathOrMessage: Paths<Values> | string,
     messages?: string[],
   ): void {
     if (messages === undefined) {
-      setTopLevelError(pathOrMessage[0])
+      setTopLevelError(pathOrMessage)
     } else {
       store.setFieldError(pathOrMessage as Paths<Values>, messages)
     }

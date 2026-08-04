@@ -424,7 +424,7 @@ describe('setValue', () => {
 describe('setError', () => {
   it('sets a top-level error when called with a single string', () => {
     const { result } = setup()
-    act(() => result.current.setError(['Something went wrong']))
+    act(() => result.current.setError('Something went wrong'))
     expect(result.current.error).toBe('Something went wrong')
   })
 
