@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import z, { ZodBoolean, ZodObject } from 'zod'
 import { createFormStore, getAsyncFields } from '@zupertools/form-core'
 import type { Paths, PathValue } from '@zupertools/form-core'
@@ -48,6 +48,12 @@ export function useZuperForm<T extends ZodObject>({
     store.subscribe,
     store.getSnapshot,
   )
+
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimers.current).forEach(clearTimeout)
+    }
+  }, [])
 
   function clearRawValue(path: string) {
     const prefix = `${path}.`

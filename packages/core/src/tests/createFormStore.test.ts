@@ -339,7 +339,7 @@ describe('clearErrors', () => {
     const store = createFormStore(schema, { name: 'T', email: '' })
     await store.validateField('name')
     store.clearErrors()
-    expect(store.getErrors()).toBeUndefined()
+    expect(store.getErrors()).toStrictEqual({})
   })
 
   it('removes an existing error for a field', async () => {
