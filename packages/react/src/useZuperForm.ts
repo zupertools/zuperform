@@ -1,9 +1,15 @@
-import { useRef, useState, useSyncExternalStore } from 'react'
-import z, { ZodBoolean, ZodObject } from 'zod'
+import {
+  HTMLInputTypeAttribute,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
+import z, { ZodObject } from 'zod'
 import { createFormStore, getAsyncFields } from '@zupertools/form-core'
 import type { Paths, PathValue } from '@zupertools/form-core'
 import { flattenPaths, getIn, getLeafValue } from '@zupertools/form-core'
-import { getSchemaAtPath, stringifyValue } from '@zupertools/form-core'
+import { stringifyValue } from '@zupertools/form-core'
 import type { ArrayStoreAccess } from '@zupertools/form-core'
 
 type ValidationMode = 'onSubmit' | 'onChange' | 'onBlur'
@@ -42,12 +48,20 @@ export function useZuperForm<T extends ZodObject>({
     {},
   )
 
+  // Tracks raw string/boolean values
+  // File inputs bypass this and writes directly to store values
   const rawValuesRef = useRef<Record<string, string | boolean>>({})
 
   const { values, errors, touched } = useSyncExternalStore(
     store.subscribe,
     store.getSnapshot,
   )
+
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimers.current).forEach(clearTimeout)
+    }
+  }, [])
 
   function clearRawValue(path: string) {
     const prefix = `${path}.`
@@ -69,19 +83,26 @@ export function useZuperForm<T extends ZodObject>({
     }
   }
 
-  function bind<P extends Paths<Values>>(name: P) {
-    const fieldSchema = getSchemaAtPath(schema, name)
+  function bind<P extends Paths<Values>>(
+    name: P,
+    type: HTMLInputTypeAttribute,
+  ) {
     const coercedValue = getLeafValue(values, name)
     const rawValue = rawValuesRef.current[name]
-    const isCheckbox = fieldSchema instanceof ZodBoolean
 
     function onChange(e: React.ChangeEvent<FormInputElement>) {
-      const raw =
-        e.target instanceof HTMLInputElement && e.target.type === 'checkbox'
-          ? e.target.checked
-          : e.target.value
-      rawValuesRef.current[name] = raw
-      store.setRawValue(name, raw)
+      if (type === 'file' && e.target instanceof HTMLInputElement) {
+        const raw = e.target.multiple ? e.target.files : e.target.files?.[0]
+        store.setValue(name, raw)
+      } else if (type === 'checkbox' && e.target instanceof HTMLInputElement) {
+        const raw = e.target.checked
+        rawValuesRef.current[name] = raw
+        store.setRawValue(name, raw)
+      } else {
+        const raw = e.target.value
+        rawValuesRef.current[name] = raw
+        store.setRawValue(name, raw)
+      }
 
       const currentHasError = Boolean(store.getErrors()[name])
       if (currentHasError && reValidateMode === 'onChange') {
@@ -101,24 +122,57 @@ export function useZuperForm<T extends ZodObject>({
       }
     }
 
-    const props = {
-      name,
-      ...(isCheckbox
-        ? {
-            checked:
-              typeof rawValue === 'boolean' ? rawValue : Boolean(coercedValue),
-          }
-        : {
-            value:
-              typeof rawValue === 'string'
-                ? rawValue
-                : stringifyValue(coercedValue),
-          }),
-      onChange,
-      onBlur,
+    if (type === 'checkbox') {
+      return {
+        name,
+        type,
+        onChange,
+        onBlur,
+        checked:
+          typeof rawValue === 'boolean' ? rawValue : Boolean(coercedValue),
+      }
     }
 
-    return props
+    if (type === 'file') {
+      return {
+        name,
+        type,
+        onChange,
+        onBlur,
+      }
+    }
+
+    if (type === 'radio') {
+      return {
+        name,
+        type,
+        onChange,
+        onBlur,
+      }
+    }
+
+    if (type === 'select') {
+      return {
+        name,
+        onChange,
+        onBlur,
+        value:
+          typeof rawValue === 'string'
+            ? rawValue
+            : stringifyValue(coercedValue, type),
+      }
+    }
+
+    return {
+      name,
+      type,
+      onChange,
+      onBlur,
+      value:
+        typeof rawValue === 'string'
+          ? rawValue
+          : stringifyValue(coercedValue, type),
+    }
   }
 
   function getFieldErrors<P extends Paths<Values>>(name: P) {

@@ -5,6 +5,23 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === null || b === null) return false
   if (typeof a !== 'object') return false
 
+  if (typeof FileList !== 'undefined' && a instanceof FileList) {
+    if (b instanceof FileList) {
+      if (a.length !== b.length) return false
+      return Array.from({ length: a.length }, (_, i) =>
+        deepEqual(a[i], b[i]),
+      ).every(Boolean)
+    }
+    return false
+  }
+
+  if (a instanceof File) {
+    if (b instanceof File) {
+      return a.name === b.name && a.size === b.size && a.type === b.type
+    }
+    return false
+  }
+
   if (Array.isArray(a) !== Array.isArray(b)) return false
 
   if (Array.isArray(a) && Array.isArray(b)) {

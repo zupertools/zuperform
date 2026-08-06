@@ -59,8 +59,12 @@ export function coerceToSchema(
   return raw
 }
 
-export function stringifyValue(value: LeafValue): string {
-  if (value instanceof Date) return value.toISOString().split('T')[0]
+export function stringifyValue(value: LeafValue, inputType: string): string {
+  if (value instanceof Date)
+    return inputType === 'datetime-local'
+      ? value.toISOString().slice(0, -5)
+      : value.toISOString().split('T')[0]
+  if (value instanceof File) return value.name
   if (value === null || value === undefined) return ''
   return String(value)
 }
