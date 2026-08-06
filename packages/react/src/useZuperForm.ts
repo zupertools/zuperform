@@ -1,6 +1,7 @@
 import {
   HTMLInputTypeAttribute,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -207,12 +208,16 @@ export function useZuperForm<T extends ZodObject>({
     store.setValue(name, value)
   }
 
-  const dirtyFields = flattenPaths(values).reduce(
-    (acc, path) => {
-      if (store.isDirty(path)) acc[path] = true
-      return acc
-    },
-    {} as Record<string, boolean>,
+  const dirtyFields = useMemo(
+    () =>
+      flattenPaths(values).reduce(
+        (acc, path) => {
+          if (store.isDirty(path)) acc[path] = true
+          return acc
+        },
+        {} as Record<string, boolean>,
+      ),
+    [values, store],
   )
   const isDirty = Object.keys(dirtyFields).length > 0
 
