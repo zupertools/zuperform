@@ -247,6 +247,227 @@ describe('validateField', () => {
   })
 })
 
+describe('validateField with deps', () => {
+  const groupedSchema = z.object({
+    credentials: z
+      .object({
+        password: z.string().min(6, 'Password too short'),
+        passwordConfirm: z.string(),
+      })
+      .refine((data) => data.password === data.passwordConfirm, {
+        message: 'Passwords must match',
+        path: ['passwordConfirm'],
+      }),
+    email: z.email('Invalid email'),
+  })
+
+  it('records errors for both the target path and its declared deps', async () => {
+    const store = createFormStore(groupedSchema, {
+      credentials: { password: 'abc', passwordConfirm: 'xyz' },
+      email: 'a@b.com',
+    })
+
+    await store.validateField('credentials.passwordConfirm', [
+      'credentials.password',
+    ])
+
+    expect(store.getErrors()['credentials.password']).toStrictEqual([
+      'Password too short',
+    ])
+    expect(store.getErrors()['credentials.passwordConfirm']).toStrictEqual([
+      'Passwords must match',
+    ])
+  })
+
+  it('does not affect errors on fields outside the target path and its deps', async () => {
+    const store = createFormStore(groupedSchema, {
+      credentials: { password: 'secret1', passwordConfirm: 'secret2' },
+      email: 'not-an-email',
+    })
+
+    await store.validateField('credentials.passwordConfirm', [
+      'credentials.password',
+    ])
+
+    expect(store.getErrors().email).toBeUndefined()
+  })
+
+  it('clears a previously-set dependent error once the values become valid', async () => {
+    const store = createFormStore(groupedSchema, {
+      credentials: { password: 'secret1', passwordConfirm: 'wrong' },
+      email: 'a@b.com',
+    })
+    await store.validateField('credentials.passwordConfirm', [
+      'credentials.password',
+    ])
+    expect(store.getErrors()['credentials.passwordConfirm']).toBeDefined()
+
+    store.setValue('credentials.passwordConfirm', 'secret1')
+    await store.validateField('credentials.passwordConfirm', [
+      'credentials.password',
+    ])
+
+    expect(store.getErrors()['credentials.passwordConfirm']).toBeUndefined()
+  })
+
+  it('does not record an error for a valid dependent field group', async () => {
+    const store = createFormStore(groupedSchema, {
+      credentials: { password: 'secret1', passwordConfirm: 'secret1' },
+      email: 'a@b.com',
+    })
+
+    const messages = await store.validateField('credentials.passwordConfirm', [
+      'credentials.password',
+    ])
+
+    expect(messages).toBeUndefined()
+    expect(store.getErrors()['credentials.passwordConfirm']).toBeUndefined()
+  })
+
+  it('validates only the common ancestor schema when fields share a group, not the full root', async () => {
+    const rootRefineSpy = vi.fn()
+    const scopedSchema = z
+      .object({
+        credentials: z
+          .object({
+            password: z.string().min(6, 'Password too short'),
+            passwordConfirm: z.string(),
+          })
+          .refine((data) => data.password === data.passwordConfirm, {
+            message: 'Passwords must match',
+            path: ['passwordConfirm'],
+          }),
+        email: z.email('Invalid email'),
+      })
+      .superRefine(() => {
+        rootRefineSpy()
+      })
+
+    const store = createFormStore(scopedSchema, {
+      credentials: { password: 'secret1', passwordConfirm: 'secret2' },
+      email: 'not-an-email',
+    })
+
+    await store.validateField('credentials.passwordConfirm', [
+      'credentials.password',
+    ])
+
+    expect(rootRefineSpy).not.toHaveBeenCalled()
+    expect(store.getErrors()['credentials.passwordConfirm']).toStrictEqual([
+      'Passwords must match',
+    ])
+  })
+
+  it('falls back to validating the full root schema when the fields share no common group', async () => {
+    const rootRefineSpy = vi.fn()
+    const flatSchema = z
+      .object({
+        password: z.string().min(6, 'Password too short'),
+        passwordConfirm: z.string(),
+        email: z.email('Invalid email'),
+      })
+      .superRefine((data, ctx) => {
+        rootRefineSpy()
+        if (data.password !== data.passwordConfirm) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Passwords must match',
+            path: ['passwordConfirm'],
+          })
+        }
+      })
+
+    const store = createFormStore(flatSchema, {
+      password: 'secret1',
+      passwordConfirm: 'secret2',
+      email: 'a@b.com',
+    })
+
+    await store.validateField('passwordConfirm', ['password'])
+
+    expect(rootRefineSpy).toHaveBeenCalled()
+    expect(store.getErrors().passwordConfirm).toStrictEqual([
+      'Passwords must match',
+    ])
+  })
+
+  it('notifies subscribers once', async () => {
+    const store = createFormStore(groupedSchema, {
+      credentials: { password: 'abc', passwordConfirm: 'xyz' },
+      email: 'a@b.com',
+    })
+    const listener = vi.fn()
+    store.subscribe(listener)
+
+    await store.validateField('credentials.passwordConfirm', [
+      'credentials.password',
+    ])
+
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('setIssues', () => {
+  function makeIssue(path: (string | number)[], message: string) {
+    return { code: 'custom', message, path } as unknown as z.core.$ZodIssue
+  }
+
+  it('sets errors from raw Zod issues', () => {
+    const store = createFormStore(schema, { name: '', email: '' })
+    store.setIssues([makeIssue(['name'], 'Name already taken')])
+    expect(store.getErrors().name).toStrictEqual(['Name already taken'])
+  })
+
+  it('replaces all existing errors by default', async () => {
+    const store = createFormStore(schema, { name: 'T', email: 'not-an-email' })
+    await store.validate()
+    expect(store.getErrors().email).toBeDefined()
+
+    store.setIssues([makeIssue(['name'], 'Name already taken')])
+
+    expect(store.getErrors().name).toStrictEqual(['Name already taken'])
+    expect(store.getErrors().email).toBeUndefined()
+  })
+
+  it('merges with existing errors when merge is true', async () => {
+    const store = createFormStore(schema, { name: 'T', email: 'not-an-email' })
+    await store.validate()
+
+    store.setIssues([makeIssue(['name'], 'Name already taken')], true)
+
+    expect(store.getErrors().name).toStrictEqual(['Name already taken'])
+    expect(store.getErrors().email).toStrictEqual(['Invalid email'])
+  })
+
+  it('groups multiple issues for the same path', () => {
+    const store = createFormStore(schema, { name: '', email: '' })
+    store.setIssues([
+      makeIssue(['name'], 'First error'),
+      makeIssue(['name'], 'Second error'),
+    ])
+    expect(store.getErrors().name).toStrictEqual([
+      'First error',
+      'Second error',
+    ])
+  })
+
+  it('supports nested paths', () => {
+    const store = createFormStore(nestedSchema, {
+      address: { street: '', city: '' },
+    })
+    store.setIssues([makeIssue(['address', 'street'], 'Street taken')])
+    expect(store.getErrors()['address.street']).toStrictEqual(['Street taken'])
+  })
+
+  it('notifies subscribers', () => {
+    const store = createFormStore(schema, { name: '', email: '' })
+    const listener = vi.fn()
+    store.subscribe(listener)
+    store.setIssues([makeIssue(['name'], 'Name already taken')])
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('reset', () => {
   it('restores the original default values when called without arguments', () => {
     const store = createFormStore(schema, { name: 'Theo', email: 'a@b.com' })

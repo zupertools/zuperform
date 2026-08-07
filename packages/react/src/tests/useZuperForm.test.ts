@@ -1267,6 +1267,165 @@ describe('dirtyFields / isDirty', () => {
   })
 })
 
+describe('deps', () => {
+  const groupedSchema = z.object({
+    credentials: z
+      .object({
+        password: z.string().min(6, 'Password too short'),
+        passwordConfirm: z.string(),
+      })
+      .refine((data) => data.password === data.passwordConfirm, {
+        message: 'Passwords must match',
+        path: ['passwordConfirm'],
+      }),
+  })
+
+  function setupDepsForm(
+    overrides?: Partial<Parameters<typeof useZuperForm>[0]>,
+  ) {
+    return renderHook(() =>
+      useZuperForm({
+        schema: groupedSchema,
+        defaultValues: {
+          credentials: { password: '', passwordConfirm: '' },
+        },
+        handler: vi.fn().mockResolvedValue(undefined),
+        mode: 'onChange',
+        deps: { 'credentials.passwordConfirm': ['credentials.password'] },
+        ...overrides,
+      }),
+    )
+  }
+
+  it('validates the dependent field when the key field changes', async () => {
+    const { result } = setupDepsForm()
+    act(() => {
+      result.current.bind('credentials.passwordConfirm', 'text').onBlur()
+    })
+    act(() => {
+      result.current
+        .bind('credentials.password', 'text')
+        .onChange(makeChangeEvent('secret1'))
+    })
+    act(() => {
+      result.current
+        .bind('credentials.passwordConfirm', 'text')
+        .onChange(makeChangeEvent('secret2'))
+    })
+    await flushMicrotasks()
+    expect(
+      result.current.getFieldErrors('credentials.passwordConfirm'),
+    ).toStrictEqual(['Passwords must match'])
+  })
+
+  it('re-validates the dependent field when the dependency changes, if the dependent is already touched', async () => {
+    const { result } = setupDepsForm()
+    act(() => {
+      result.current
+        .bind('credentials.passwordConfirm', 'text')
+        .onChange(makeChangeEvent('secret2'))
+    })
+    act(() => {
+      result.current.bind('credentials.passwordConfirm', 'text').onBlur()
+    })
+
+    act(() => {
+      result.current
+        .bind('credentials.password', 'text')
+        .onChange(makeChangeEvent('secret2'))
+    })
+    await flushMicrotasks()
+
+    expect(
+      result.current.getFieldErrors('credentials.passwordConfirm'),
+    ).toBeUndefined()
+  })
+
+  it('does not validate the dependent field when the dependency changes and the dependent is untouched with no error', async () => {
+    const { result } = setupDepsForm()
+    act(() => {
+      result.current
+        .bind('credentials.password', 'text')
+        .onChange(makeChangeEvent('secret1'))
+    })
+    await flushMicrotasks()
+    expect(
+      result.current.getFieldErrors('credentials.passwordConfirm'),
+    ).toBeUndefined()
+    expect(
+      result.current.touchedFields['credentials.passwordConfirm'],
+    ).toBeUndefined()
+  })
+
+  it('clears the dependent error once the values match', async () => {
+    const { result } = setupDepsForm()
+    act(() => {
+      result.current
+        .bind('credentials.password', 'text')
+        .onChange(makeChangeEvent('secret1'))
+    })
+    act(() => {
+      result.current
+        .bind('credentials.passwordConfirm', 'text')
+        .onChange(makeChangeEvent('secret2'))
+    })
+    await flushMicrotasks()
+    expect(
+      result.current.getFieldErrors('credentials.passwordConfirm'),
+    ).toStrictEqual(['Passwords must match'])
+
+    act(() => {
+      result.current
+        .bind('credentials.passwordConfirm', 'text')
+        .onChange(makeChangeEvent('secret1'))
+    })
+    await flushMicrotasks()
+    expect(
+      result.current.getFieldErrors('credentials.passwordConfirm'),
+    ).toBeUndefined()
+  })
+})
+
+describe('setIssues', () => {
+  function makeIssue(path: (string | number)[], message: string) {
+    return { code: 'custom', message, path } as unknown as z.core.$ZodIssue
+  }
+
+  it('sets errors from raw Zod issues', () => {
+    const { result } = renderHook(() =>
+      useZuperForm({
+        schema,
+        defaultValues: { name: '', email: '' },
+        handler: vi.fn().mockResolvedValue(undefined),
+      }),
+    )
+    act(() => {
+      result.current.setIssues([makeIssue(['name'], 'Name already taken')])
+    })
+    expect(result.current.getFieldErrors('name')).toStrictEqual([
+      'Name already taken',
+    ])
+  })
+
+  it('supports nested paths', () => {
+    const { result } = renderHook(() =>
+      useZuperForm({
+        schema: nestedSchema,
+        defaultValues: { address: { street: '', city: '' } },
+        handler: vi.fn().mockResolvedValue(undefined),
+      }),
+    )
+    act(() => {
+      result.current.setIssues([
+        makeIssue(['address', 'street'], 'Street taken'),
+      ])
+    })
+    expect(result.current.getFieldErrors('address.street')).toStrictEqual([
+      'Street taken',
+    ])
+  })
+})
+
 describe('_internal', () => {
   it('exposes subscribe, getSnapshot, and setValue for useFieldArray', () => {
     const { result } = renderHook(() =>

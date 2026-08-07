@@ -7,7 +7,8 @@ export {
   stringifyValue,
 } from './schemaIntrospection'
 export { deepEqual } from './deepEqual'
-export { getAsyncFields } from './hasAsyncRefinements'
+export { getAsyncFields } from './async'
 export type { FormStore, ArrayStoreAccess } from './types/store'
 export type { Paths, PathValue } from './types/paths'
 export type { LeafValue } from './types/values'
+export { reverseMapDeps, getAsyncDeps } from './deps'
