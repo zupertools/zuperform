@@ -22,10 +22,10 @@ function SignupForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <input {...bind("name")} />
+      <input {...bind("name", "text")} />
       <span>{getFieldErrors("name")[0]}</span>
 
-      <input {...bind("email")} />
+      <input {...bind("email", "email")} />
       <span>{getFieldErrors("email")[0]}</span>
 
       <button type="submit" disabled={isSubmitting}>
@@ -43,10 +43,11 @@ function SignupForm() {
 - **Full TypeScript inference** - field paths in `bind()`, `getFieldErrors()`, and `watch()` are typed against your schema
 - **Flexible validation timing** - `mode` controls when a field is first validated (`onSubmit`, `onBlur`, or `onChange`), `reValidateMode` controls how it behaves once an error is already showing
 - **Nested objects and arrays** - dot-path syntax (`address.street`, `items.0.qty`) works throughout, and `useFieldArray` adds `append`, `remove`, and `move` for dynamic lists
-- **Automatic input coercion** - `z.number()` fields gets coerced from the DOM's string value automatically, so values.age is a real number, not `"42"`. The input itself still shows exactly what you typed, even mid-edit (e.g. `"1."` while typing a decimal).
+- **Automatic input coercion** - `z.number()` fields gets coerced from the DOM's string value automatically, so values.age is a real number, not `"42"`.
 - **Server-side/custom error integration** - `setError('top-level message')`, `setError('field', ['message'])` or `addFieldError('field', ['message'])` feeds server responses or custom errors back into the same error state the form already tracks
 - **Async validation** - schemas with `.refine(async ...)` work without any extra config and automatically debounce
 - **Dirty and touched tracking** - `isDirty`, `dirtyFields`, and `touchedFields` are derived from a deep comparison against the original `defaultValues`
+- **Field dependencies** - let you declare that one field's validation depends on the value of another field
 
 ## Installation
 
@@ -67,6 +68,7 @@ const {
   error, // top-level error string, if any
   setError, // set a field or top-level error manually
   addFieldError, // add an error message to a field
+  setIssues, // set field errors from Zod issues
   reset, // reset to defaults, or to new values
   resetField, // reset a single field to default, or to a new value
   setValue, // set a field value manually
@@ -83,6 +85,7 @@ const {
   mode: "onSubmit", // when to run the first validation pass per field
   reValidateMode: "onChange", // once a field has an error, how it re-checks
   asyncDebounceMs: 300, // debounce time for async validation on onChange
+  deps: { field: ["dependsOn"] }, // field dependencies to declare that one field's validation depends on another's value
 });
 ```
 
@@ -90,16 +93,18 @@ const {
 
 ### Binding fields
 
-`bind` works the same way regardless of nesting or element type:
+`bind` is used to bind a form field to the form state, and takes two arguments: the field path and the input type.
 
 ```tsx
-<input {...bind('name')} />
-<textarea {...bind('bio')} />
-<select {...bind('country')}>...</select>
-<input type="checkbox" {...bind('acceptTerms')} />
+<input {...bind('name', 'text')} />
+<input {...bind('age', 'number')} />
+<textarea {...bind('bio', 'text')} />
+<select {...bind('country', 'select')}>...</select>
+<input {...bind('acceptTerms', 'checkbox')} />
+<input {...bind('dateOfBirth', 'date')} />
 ```
 
-Checkbox handling is automatic: `bind` detects a `z.boolean()` field at that path and returns `checked` instead of `value`.
+All standard input types are supported, including checkbox, date, select, range etc.
 
 ### Nested and array fields
 
@@ -114,7 +119,7 @@ const schema = z.object({
 ```
 
 ```tsx
-<input {...bind('address.street')} />
+<input {...bind('address.street', 'text')} />
 <span>{getFieldErrors('address.street')[0]}</span> // render the topmost error
 // or
 {getFieldErrors('address.street').map((e) => <span key={e}>{e}</span>)} // render all errors
@@ -129,7 +134,7 @@ const { fields, append, remove } = useFieldArray(form._internal, "items");
 {
   fields.map((f) => (
     <div key={f.id}>
-      <input {...form.bind(`items.${f.index}.qty`)} type="number" />
+      <input {...form.bind(`items.${f.index}.qty`, "number")} />
       <span>{form.getFieldErrors(`items.${f.index}.qty`)[0]}</span>
       <button type="button" onClick={() => remove(f.index)}>
         Remove
@@ -175,6 +180,8 @@ handler: async (values) => {
 ```
 
 To set the top-level `error`, pass one argument: `setError('Something went wrong')`.
+
+You can also use `addFieldError(field)` to add an error message to a specific field, or `setIssues(issues, merge?)` to map Zod issues from server-side/custom validation onto the form state.
 
 ### Dirty and touched state
 
