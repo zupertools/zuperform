@@ -1,5 +1,23 @@
 # @zupertools/form-react
 
+## 0.3.0
+
+### Minor Changes
+
+- 14f260e: New feature: Field dependencies let you declare that one field's validation depends on another's value
+- 113bde5: Updated bind() to take the input type as a parameter, which allowed for support for all standard inputs including file uploads
+
+### Patch Changes
+
+- 4daa6b9: New clearErrors() function in hook for clearing all errors or, when path passed, a field's errors.
+- 82f9c19: Debounce timers are now cleaned up on unmount to prevent performace issues.
+- 295a074: Dirty fields are now memoized to prevent unnecessary re-computation
+- 7bba1d6: When setting a top-level error with setError(message), it now accepts a null value for clearing the error.
+- Updated dependencies [113bde5]
+- Updated dependencies [4daa6b9]
+- Updated dependencies [14f260e]
+  - @zupertools/form-core@0.3.0
+
 ## 0.2.2
 
 ### Patch Changes

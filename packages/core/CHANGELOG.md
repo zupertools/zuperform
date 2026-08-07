@@ -1,5 +1,16 @@
 # @zupertools/form-core
 
+## 0.3.0
+
+### Minor Changes
+
+- 113bde5: Support added for files and file lists
+- 4daa6b9: clearFieldErrors() is remade into clearErrors() which now accepts a optional path parameter that when left empty clears all errors.
+
+### Patch Changes
+
+- 14f260e: Field dependencies added, which declares that one field's validation depends on another's value
+
 ## 0.2.1
 
 ### Patch Changes
