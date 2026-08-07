@@ -10,11 +10,15 @@ The framework-agnostic core of zuperform. It handles form state, validation, dir
 - **`validateAll(schema, values)`** - runs `safeParseAsync` and returns both the result and a flat `Record<string, string>` of errors keyed by dot-path.
 - **`validateField(schema, values, path)`** - extracts the field's own schema and parses just that value, so async refinements on other fields don't block it.
 - **`getSchemaAtPath(schema, path)`** - traverses a Zod schema by dot-path and returns the schema at that location, unwrapping `optional`, `nullable`, and `default` wrappers along the way.
-- **`coerceToSchema(schema, rawValue)`** - coerces a raw DOM string value to the type the schema expects. Handles `z.number()` and `z.boolean()`.
+- **`coerceToSchema(schema, rawValue)`** - coerces a raw DOM string value to the type the schema expects. Handles Zod numbers, booleans, and dates.
+- **`stringifyValue(value, inputType)`** - takes the value and input type to return a string ready for the `value` attribute of an input element.
 - **`getIn(obj, path)`** / **`setIn(obj, path, value)`** - immutable dot-path read and write helpers.
+- **`getLeafValue(obj, path)`** - wrapper around `getIn` that returns the value as `LeafValue`.
 - **`flattenPaths(obj)`** - returns all leaf paths in a nested object as a flat array of dot-path strings.
 - **`deepEqual(a, b)`** - structural equality check used internally for dirty tracking.
-- **`getAsyncFields(schema)`** - walks a Zod object schema and returns a `Set<string>` of field paths that have async refinements anywhere in their schema tree. Used by the React adapter to automatically debounce only the fields that need it.
+- **`getAsyncFields(schema)`** - returns a `Set<string>` of field paths that have async refinements anywhere in their schema tree.
+- **`reverseMapDeps(deps)`** - reverse maps a deps object.
+- **`getAsyncDeps(schema, deps, probeValue)`** - returns a `Set<string>` of deps that have async refinements anywhere in their schema tree.
 
 ## Building an adapter
 
@@ -43,7 +47,8 @@ store.resetField(path, nextValue?)
 // Validation
 store.validate()            // full async parse, returns ZodSafeParseResult
 store.validateField(path)   // async, returns error message or undefined
-store.setFieldError(path, message, append)
+store.setFieldError(path, message, append?)
+store.setIssues(issues, merge?)
 store.clearFieldErrors(path)
 
 // Subscribe to changes (compatible with useSyncExternalStore or similar)
