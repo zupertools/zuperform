@@ -7,12 +7,16 @@ import {
   useSyncExternalStore,
 } from 'react'
 import z, { ZodObject } from 'zod'
-import { createFormStore, getAsyncFields } from '@zupertools/form-core'
+import {
+  createFormStore,
+  getAsyncDeps,
+  getAsyncFields,
+  reverseMapDeps,
+} from '@zupertools/form-core'
 import type { Paths, PathValue } from '@zupertools/form-core'
 import { flattenPaths, getIn, getLeafValue } from '@zupertools/form-core'
 import { stringifyValue } from '@zupertools/form-core'
 import type { ArrayStoreAccess } from '@zupertools/form-core'
-
 type ValidationMode = 'onSubmit' | 'onChange' | 'onBlur'
 
 interface UseZuperFormProps<T extends ZodObject> {
@@ -22,6 +26,7 @@ interface UseZuperFormProps<T extends ZodObject> {
   mode?: ValidationMode
   reValidateMode?: ValidationMode
   asyncDebounceMs?: number
+  deps?: Partial<Record<Paths<z.infer<T>>, Paths<z.infer<T>>[]>>
 }
 
 type FormInputElement =
@@ -36,6 +41,7 @@ export function useZuperForm<T extends ZodObject>({
   mode = 'onSubmit',
   reValidateMode = 'onChange',
   asyncDebounceMs = 300,
+  deps,
 }: UseZuperFormProps<T>) {
   type Values = z.infer<T>
   const storeRef = useRef(createFormStore(schema, defaultValues))
@@ -43,7 +49,9 @@ export function useZuperForm<T extends ZodObject>({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [error, setTopLevelError] = useState<string | null>(null)
 
-  const asyncFieldsRef = useRef<Set<string>>(getAsyncFields(schema))
+  const asyncFieldsRef = useRef<Set<string>>(
+    getAsyncFields(schema, defaultValues),
+  )
 
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
@@ -52,6 +60,15 @@ export function useZuperForm<T extends ZodObject>({
   // Tracks raw string/boolean values
   // File inputs bypass this and writes directly to store values
   const rawValuesRef = useRef<Record<string, string | boolean>>({})
+
+  const reversedDeps = useMemo(
+    () => (deps ? reverseMapDeps(deps) : undefined),
+    [deps],
+  )
+
+  const asyncDepsRef = useRef<Set<string>>(
+    deps ? getAsyncDeps(schema, deps, defaultValues) : new Set<string>(),
+  )
 
   const { values, errors, touched } = useSyncExternalStore(
     store.subscribe,
@@ -73,14 +90,17 @@ export function useZuperForm<T extends ZodObject>({
     }
   }
 
-  function debouncedValidateField(name: string) {
+  function debouncedValidateField<P extends Paths<Values>>(name: P) {
     clearTimeout(debounceTimers.current[name])
-    if (asyncFieldsRef.current.has(name)) {
+    const isAsync =
+      asyncFieldsRef.current.has(name) || asyncDepsRef.current.has(name)
+
+    if (isAsync) {
       debounceTimers.current[name] = setTimeout(() => {
-        store.validateField(name)
+        store.validateField(name, deps?.[name])
       }, asyncDebounceMs)
     } else {
-      store.validateField(name)
+      store.validateField(name, deps?.[name])
     }
   }
 
@@ -106,20 +126,30 @@ export function useZuperForm<T extends ZodObject>({
       }
 
       const currentHasError = Boolean(store.getErrors()[name])
-      if (currentHasError && reValidateMode === 'onChange') {
+      if (
+        (currentHasError && reValidateMode === 'onChange') ||
+        (!currentHasError && mode === 'onChange')
+      ) {
         debouncedValidateField(name)
-      } else if (!currentHasError && mode === 'onChange') {
-        debouncedValidateField(name)
+        reversedDeps?.[name]?.forEach((dep) => {
+          if (store.isTouched(dep) || store.getErrors()[dep])
+            debouncedValidateField(dep)
+        })
       }
     }
 
     function onBlur() {
       store.touch(name)
       const currentHasError = Boolean(store.getErrors()[name])
-      if (currentHasError && reValidateMode === 'onBlur') {
-        store.validateField(name)
-      } else if (!currentHasError && mode === 'onBlur') {
-        store.validateField(name)
+      if (
+        (currentHasError && reValidateMode === 'onBlur') ||
+        (!currentHasError && mode === 'onBlur')
+      ) {
+        debouncedValidateField(name)
+        reversedDeps?.[name]?.forEach((dep) => {
+          if (store.isTouched(dep) || store.getErrors()[dep])
+            debouncedValidateField(dep)
+        })
       }
     }
 
@@ -238,6 +268,10 @@ export function useZuperForm<T extends ZodObject>({
     store.setFieldError(path, messages, true)
   }
 
+  function setIssues(issues: z.core.$ZodIssue[]): void {
+    store.setIssues(issues)
+  }
+
   function clearError(path?: Paths<Values>): void {
     store.clearErrors(path)
   }
@@ -281,6 +315,7 @@ export function useZuperForm<T extends ZodObject>({
     error,
     setError,
     addFieldError,
+    setIssues,
     clearError,
     watch,
     reset,

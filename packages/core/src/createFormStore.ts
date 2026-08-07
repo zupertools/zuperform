@@ -1,7 +1,12 @@
 import z, { ZodObject } from 'zod'
 import { getIn, setIn } from './pathUtils'
 import { FormStore } from './types/store'
-import { validateAll, validateField as validateFieldAt } from './validate'
+import {
+  mapIssuesToErrors,
+  validateAll,
+  validateField as validateFieldAt,
+  validateFieldWithDeps as validateFieldWithDepsAt,
+} from './validate'
 import { deepEqual } from './deepEqual'
 import { coerceToSchema, getSchemaAtPath } from './schemaIntrospection'
 
@@ -93,14 +98,28 @@ export function createFormStore<T extends ZodObject>(
       notify()
       return result
     },
-    validateField: async (path: string) => {
+    validateField: async (path: string, deps?: string[]) => {
+      if (deps?.length) {
+        const errorsByPath = await validateFieldWithDepsAt(
+          schema,
+          snapshot.values,
+          path,
+          deps,
+        )
+        const nextErrors = { ...snapshot.errors }
+        for (const [p, messages] of Object.entries(errorsByPath)) {
+          if (messages) nextErrors[p] = messages
+          else delete nextErrors[p]
+        }
+        snapshot = { ...snapshot, errors: nextErrors }
+        notify()
+        return errorsByPath[path]
+      }
+
       const messages = await validateFieldAt(schema, snapshot.values, path)
       const nextErrors = { ...snapshot.errors }
-      if (messages) {
-        nextErrors[path] = messages
-      } else {
-        delete nextErrors[path]
-      }
+      if (messages) nextErrors[path] = messages
+      else delete nextErrors[path]
       snapshot = { ...snapshot, errors: nextErrors }
       notify()
       return messages
@@ -115,6 +134,14 @@ export function createFormStore<T extends ZodObject>(
         ? [...(nextErrors[path] ?? []), ...messages]
         : messages
       snapshot = { ...snapshot, errors: nextErrors }
+      notify()
+    },
+    setIssues: (issues: z.core.$ZodIssue[], merge: boolean = false) => {
+      const mappedIssues = mapIssuesToErrors(issues)
+      snapshot = {
+        ...snapshot,
+        errors: merge ? { ...snapshot.errors, ...mappedIssues } : mappedIssues,
+      }
       notify()
     },
     clearErrors: (path?: string) => {

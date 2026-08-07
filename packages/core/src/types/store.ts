@@ -1,4 +1,4 @@
-import { ZodSafeParseResult } from 'zod'
+import z, { ZodSafeParseResult } from 'zod'
 
 export interface FormStore<T> {
   getSnapshot: () => {
@@ -17,8 +17,12 @@ export interface FormStore<T> {
   reset: (nextValues?: T) => void
   resetField: (path: string, nextValue?: unknown) => void
   validate: () => Promise<ZodSafeParseResult<T>>
-  validateField: (path: string) => Promise<string[] | undefined>
+  validateField: (
+    path: string,
+    deps?: string[],
+  ) => Promise<string[] | undefined>
   setFieldError: (path: string, messages: string[], append?: boolean) => void
+  setIssues: (issues: z.core.$ZodIssue[], merge?: boolean) => void
   clearErrors: (path?: string) => void
   subscribe: (cb: () => void) => () => void
 }

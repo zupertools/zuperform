@@ -1,13 +1,15 @@
-import type { ZodObject, z } from 'zod'
+import { type ZodObject, z } from 'zod'
 import { getSchemaAtPath } from './schemaIntrospection'
 import { getIn } from './pathUtils'
+import { commonAncestorPath } from './deps'
 
 export function mapIssuesToErrors(
   issues: z.core.$ZodIssue[],
+  prefix = '',
 ): Record<string, string[]> {
   const errors: Record<string, string[]> = {}
   for (const issue of issues) {
-    const key = issue.path.join('')
+    const key = `${prefix}${issue.path.join('.')}`
     ;(errors[key] ??= []).push(issue.message)
   }
   return errors
@@ -34,4 +36,29 @@ export async function validateField<T extends ZodObject>(
   const result = await fieldSchema.safeParseAsync(rawValue)
   if (result.success) return undefined
   return result.error.issues.map((i) => i.message)
+}
+
+export async function validateFieldWithDeps<T extends ZodObject>(
+  schema: T,
+  values: z.infer<T>,
+  path: string,
+  deps: string[],
+): Promise<Record<string, string[] | undefined>> {
+  const allPaths = [path, ...deps]
+  const ancestorPath = commonAncestorPath(allPaths)
+
+  const ancestorSchema = ancestorPath
+    ? getSchemaAtPath(schema, ancestorPath)
+    : schema
+  const ancestorValue = ancestorPath ? getIn(values, ancestorPath) : values
+  if (!ancestorSchema)
+    return Object.fromEntries(allPaths.map((p) => [p, undefined]))
+
+  const result = await ancestorSchema.safeParseAsync(ancestorValue)
+  if (result.success)
+    return Object.fromEntries(allPaths.map((p) => [p, undefined]))
+
+  const prefix = ancestorPath ? `${ancestorPath}.` : ''
+  const errors = mapIssuesToErrors(result.error.issues, prefix)
+  return Object.fromEntries(allPaths.map((p) => [p, errors[p]]))
 }
