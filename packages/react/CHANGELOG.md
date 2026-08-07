@@ -1,5 +1,13 @@
 # @zupertools/form-react
 
+## 0.3.1
+
+### Patch Changes
+
+- 4fa5bcd: Updated README's
+- Updated dependencies [4fa5bcd]
+  - @zupertools/form-core@0.3.1
+
 ## 0.3.0
 
 ### Minor Changes
