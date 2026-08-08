@@ -14,7 +14,7 @@ export function isAsyncSchema(
 
 export function getAsyncFields<T extends ZodObject>(
   schema: T,
-  defaultValues: z.infer<T>,
+  defaultValues: z.input<T>,
 ): Set<string> {
   const asyncFields = new Set<string>()
   const shape = schema.shape
