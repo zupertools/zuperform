@@ -12,7 +12,7 @@ import { coerceToSchema, getSchemaAtPath } from './schemaIntrospection'
 
 export function createFormStore<T extends ZodObject>(
   schema: T,
-  defaultValues: z.infer<T>,
+  defaultValues: z.input<T>,
 ): FormStore<z.infer<T>> {
   const initialValues = { ...defaultValues } as z.infer<T>
 

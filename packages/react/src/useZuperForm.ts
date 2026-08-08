@@ -21,8 +21,8 @@ type ValidationMode = 'onSubmit' | 'onChange' | 'onBlur'
 
 interface UseZuperFormProps<T extends ZodObject> {
   schema: T
-  defaultValues: z.infer<T>
-  handler: (values: z.infer<T>) => Promise<void>
+  defaultValues: z.input<T>
+  handler: (values: z.output<T>) => Promise<void>
   mode?: ValidationMode
   reValidateMode?: ValidationMode
   asyncDebounceMs?: number

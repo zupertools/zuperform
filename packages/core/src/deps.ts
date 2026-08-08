@@ -39,7 +39,7 @@ export function commonAncestorPath(paths: string[]): string {
 export function getAsyncDeps<T extends ZodObject>(
   schema: T,
   deps: SchemaDeps<z.infer<T>>,
-  probeValue: z.infer<T>,
+  probeValue: z.input<T>,
 ) {
   return new Set(
     Object.entries(deps ?? {})
