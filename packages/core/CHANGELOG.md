@@ -1,5 +1,11 @@
 # @zupertools/form-core
 
+## 0.3.2
+
+### Patch Changes
+
+- c2aba18: The types of default values vs. coerced values are now correctly Zod input type and output type, respectively
+
 ## 0.3.1
 
 ### Patch Changes
