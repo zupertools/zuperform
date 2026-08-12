@@ -26,7 +26,7 @@ interface UseZuperFormProps<T extends ZodObject> {
   mode?: ValidationMode
   reValidateMode?: ValidationMode
   asyncDebounceMs?: number
-  deps?: Partial<Record<Paths<z.infer<T>>, Paths<z.infer<T>>[]>>
+  deps?: Partial<Record<Paths<z.input<T>>, Paths<z.input<T>>[]>>
 }
 
 type FormInputElement =
@@ -43,7 +43,7 @@ export function useZuperForm<T extends ZodObject>({
   asyncDebounceMs = 300,
   deps,
 }: UseZuperFormProps<T>) {
-  type Values = z.infer<T>
+  type InputValues = z.input<T>
   const storeRef = useRef(createFormStore(schema, defaultValues))
   const store = storeRef.current
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
@@ -90,7 +90,7 @@ export function useZuperForm<T extends ZodObject>({
     }
   }
 
-  function debouncedValidateField<P extends Paths<Values>>(name: P) {
+  function debouncedValidateField<P extends Paths<InputValues>>(name: P) {
     clearTimeout(debounceTimers.current[name])
     const isAsync =
       asyncFieldsRef.current.has(name) || asyncDepsRef.current.has(name)
@@ -104,7 +104,7 @@ export function useZuperForm<T extends ZodObject>({
     }
   }
 
-  function bind<P extends Paths<Values>>(
+  function bind<P extends Paths<InputValues>>(
     name: P,
     type: HTMLInputTypeAttribute,
   ) {
@@ -206,33 +206,35 @@ export function useZuperForm<T extends ZodObject>({
     }
   }
 
-  function getFieldErrors<P extends Paths<Values>>(name: P) {
+  function getFieldErrors<P extends Paths<InputValues>>(name: P) {
     return errors[name]
   }
 
-  function watch(): Values
-  function watch<P extends Paths<Values>>(name?: P): PathValue<Values, P>
-  function watch<P extends Paths<Values>>(name?: P) {
+  function watch(): InputValues
+  function watch<P extends Paths<InputValues>>(
+    name?: P,
+  ): PathValue<InputValues, P>
+  function watch<P extends Paths<InputValues>>(name?: P) {
     if (name === undefined) return values
-    return getIn<PathValue<Values, P>>(values, name)
+    return getIn<PathValue<InputValues, P>>(values, name)
   }
 
-  function reset(nextValues?: Values) {
+  function reset(nextValues?: InputValues) {
     rawValuesRef.current = {}
     store.reset(nextValues)
   }
 
-  function resetField<P extends Paths<Values>>(
+  function resetField<P extends Paths<InputValues>>(
     name: P,
-    nextValue?: PathValue<Values, P>,
+    nextValue?: PathValue<InputValues, P>,
   ) {
     clearRawValue(name)
     store.resetField(name, nextValue)
   }
 
-  function setValue<P extends Paths<Values>>(
+  function setValue<P extends Paths<InputValues>>(
     name: P,
-    value: PathValue<Values, P>,
+    value: PathValue<InputValues, P>,
   ) {
     clearRawValue(name)
     store.setValue(name, value)
@@ -252,19 +254,19 @@ export function useZuperForm<T extends ZodObject>({
   const isDirty = Object.keys(dirtyFields).length > 0
 
   function setError(message: string | null): void
-  function setError(path: Paths<Values>, messages: string[]): void
+  function setError(path: Paths<InputValues>, messages: string[]): void
   function setError(
-    pathOrMessage: Paths<Values> | (string | null),
+    pathOrMessage: Paths<InputValues> | (string | null),
     messages?: string[],
   ): void {
     if (messages === undefined) {
       setTopLevelError(pathOrMessage)
     } else {
-      store.setFieldError(pathOrMessage as Paths<Values>, messages)
+      store.setFieldError(pathOrMessage as Paths<InputValues>, messages)
     }
   }
 
-  function addFieldError(path: Paths<Values>, messages: string[]): void {
+  function addFieldError(path: Paths<InputValues>, messages: string[]): void {
     store.setFieldError(path, messages, true)
   }
 
@@ -272,7 +274,7 @@ export function useZuperForm<T extends ZodObject>({
     store.setIssues(issues)
   }
 
-  function clearError(path?: Paths<Values>): void {
+  function clearError(path?: Paths<InputValues>): void {
     store.clearErrors(path)
   }
 
@@ -298,7 +300,7 @@ export function useZuperForm<T extends ZodObject>({
     }
   }
 
-  const internalStore: ArrayStoreAccess<Values> = {
+  const internalStore: ArrayStoreAccess<InputValues> = {
     subscribe: store.subscribe,
     getSnapshot: store.getSnapshot,
     setValue: (path, value) => {

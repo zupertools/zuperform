@@ -13,8 +13,8 @@ import { coerceToSchema, getSchemaAtPath } from './schemaIntrospection'
 export function createFormStore<T extends ZodObject>(
   schema: T,
   defaultValues: z.input<T>,
-): FormStore<z.infer<T>> {
-  const initialValues = { ...defaultValues } as z.infer<T>
+): FormStore<z.input<T>, z.output<T>> {
+  const initialValues = { ...defaultValues } as z.input<T>
 
   let snapshot = {
     values: initialValues,
@@ -64,7 +64,7 @@ export function createFormStore<T extends ZodObject>(
       }
       notify()
     },
-    reset: (nextValues?: z.infer<T>) => {
+    reset: (nextValues?: z.input<T>) => {
       const values = nextValues ? { ...nextValues } : { ...initialValues }
       snapshot = {
         values: values,
