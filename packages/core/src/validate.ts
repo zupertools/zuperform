@@ -17,7 +17,7 @@ export function mapIssuesToErrors(
 
 export async function validateAll<T extends ZodObject>(
   schema: T,
-  values: z.infer<T>,
+  values: z.input<T>,
 ) {
   const result = await schema.safeParseAsync(values)
   const errors = result.success ? {} : mapIssuesToErrors(result.error.issues)
@@ -26,7 +26,7 @@ export async function validateAll<T extends ZodObject>(
 
 export async function validateField<T extends ZodObject>(
   schema: T,
-  values: z.infer<T>,
+  values: z.input<T>,
   path: string,
 ): Promise<string[] | undefined> {
   const fieldSchema = getSchemaAtPath(schema, path)
@@ -40,7 +40,7 @@ export async function validateField<T extends ZodObject>(
 
 export async function validateFieldWithDeps<T extends ZodObject>(
   schema: T,
-  values: z.infer<T>,
+  values: z.input<T>,
   path: string,
   deps: string[],
 ): Promise<Record<string, string[] | undefined>> {

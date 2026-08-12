@@ -1,12 +1,12 @@
 import z, { ZodSafeParseResult } from 'zod'
 
-export interface FormStore<T> {
+export interface FormStore<TInput, TOutput = TInput> {
   getSnapshot: () => {
-    values: T
+    values: TInput
     errors: Record<string, string[]>
     touched: Record<string, boolean>
   }
-  getValues: () => T
+  getValues: () => TInput
   getErrors: () => Record<string, string[]>
   getValue: (path: string) => unknown
   isTouched: (path: string) => boolean
@@ -14,9 +14,9 @@ export interface FormStore<T> {
   setValue: (path: string, value: unknown) => void
   setRawValue: (path: string, raw: string | boolean) => void
   touch: (path: string) => void
-  reset: (nextValues?: T) => void
+  reset: (nextValues?: TInput) => void
   resetField: (path: string, nextValue?: unknown) => void
-  validate: () => Promise<ZodSafeParseResult<T>>
+  validate: () => Promise<ZodSafeParseResult<TOutput>>
   validateField: (
     path: string,
     deps?: string[],
