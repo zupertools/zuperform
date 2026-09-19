@@ -1,8 +1,4 @@
-import z, { ZodObject } from 'zod'
-import { getSchemaAtPath } from './schemaIntrospection'
 import { Paths } from './types/paths'
-import { isAsyncSchema } from './async'
-import { getIn } from './pathUtils'
 
 type SchemaDeps<T> = Partial<Record<Paths<T>, Paths<T>[]>>
 
@@ -34,28 +30,4 @@ export function commonAncestorPath(paths: string[]): string {
     i++
   }
   return segmentLists[0].slice(0, i).join('.')
-}
-
-export function getAsyncDeps<T extends ZodObject>(
-  schema: T,
-  deps: SchemaDeps<z.input<T>>,
-  probeValue: z.input<T>,
-) {
-  return new Set(
-    Object.entries(deps ?? {})
-      .filter(([key, depList]) => {
-        const ancestorPath = commonAncestorPath([
-          key,
-          ...(depList as Paths<T>[]),
-        ])
-        const ancestorSchema = ancestorPath
-          ? getSchemaAtPath(schema, ancestorPath)
-          : schema
-        const ancestorValue = ancestorPath
-          ? getIn(probeValue, ancestorPath)
-          : probeValue
-        return ancestorSchema && isAsyncSchema(ancestorSchema, ancestorValue)
-      })
-      .map(([key]) => key),
-  )
 }

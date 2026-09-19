@@ -45,7 +45,7 @@ function SignupForm() {
 - **Nested objects and arrays** - dot-path syntax (`address.street`, `items.0.qty`) works throughout, and `useFieldArray` adds `append`, `remove`, and `move` for dynamic lists
 - **Automatic input coercion** - `z.number()` fields gets coerced from the DOM's string value automatically, so values.age is a real number, not `"42"`.
 - **Server-side/custom error integration** - `setError('top-level message')`, `setError('field', ['message'])` or `addFieldError('field', ['message'])` feeds server responses or custom errors back into the same error state the form already tracks
-- **Async validation** - schemas with `.refine(async ...)` work without any extra config and automatically debounce
+- **Async validation** - schemas with `.refine(async ...)` work without any extra config; if a field's validation is expensive (e.g. it hits an API), you can debounce `onChange` validation with `debounceMs`
 - **Dirty and touched tracking** - `isDirty`, `dirtyFields`, and `touchedFields` are derived from a deep comparison against the original `defaultValues`
 - **Field dependencies** - let you declare that one field's validation depends on the value of another field
 
@@ -84,7 +84,7 @@ const {
   },
   mode: "onSubmit", // when to run the first validation pass per field
   reValidateMode: "onChange", // once a field has an error, how it re-checks
-  asyncDebounceMs: 300, // debounce time for async validation on onChange
+  debounceMs: 300, // debounce time for onChange validation, undefined by default (no debounce)
   deps: { field: ["dependsOn"] }, // field dependencies to declare that one field's validation depends on another's value
 });
 ```
@@ -161,7 +161,7 @@ useZuperForm({
 
 `mode` controls when a field is _first_ validated (`onSubmit`, `onBlur`, or `onChange`). `reValidateMode` controls what happens on every interaction _after_ a field already has an error. This lets a field stay quiet while the user is still typing their first pass, but respond immediately once something's flagged as wrong.
 
-Validation is async throughout, so schemas with `.refine(async ...)` work without any extra config. zuperform scans the schema on mount and automatically debounces `onChange` validation only for fields that have async refinements. The debounce defaults to 300ms and can be adjusted with `asyncDebounceMs`. On `onBlur` and submit, validation always runs immediately regardless.
+Validation is async throughout, so schemas with `.refine(async ...)` work without any extra config. If a field's validation does something expensive on every change (an API call, for example), set `debounceMs` to delay `onChange` validation for all fields by that amount. It's undefined by default, so `onChange` validation runs immediately unless you opt in. On `onBlur` and submit, validation always runs immediately regardless of `debounceMs`.
 
 ### Server-side errors
 
