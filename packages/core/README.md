@@ -16,9 +16,7 @@ The framework-agnostic core of zuperform. It handles form state, validation, dir
 - **`getLeafValue(obj, path)`** - wrapper around `getIn` that returns the value as `LeafValue`.
 - **`flattenPaths(obj)`** - returns all leaf paths in a nested object as a flat array of dot-path strings.
 - **`deepEqual(a, b)`** - structural equality check used internally for dirty tracking.
-- **`getAsyncFields(schema)`** - returns a `Set<string>` of field paths that have async refinements anywhere in their schema tree.
 - **`reverseMapDeps(deps)`** - reverse maps a deps object.
-- **`getAsyncDeps(schema, deps, probeValue)`** - returns a `Set<string>` of deps that have async refinements anywhere in their schema tree.
 
 ## Building an adapter
 
@@ -56,6 +54,8 @@ const unsubscribe = store.subscribe(() => {
   const { values, errors, touched } = store.getSnapshot()
 })
 ```
+
+Validation is async throughout (`validate` and `validateField` both return promises), so schemas with `.refine(async ...)` work without any extra config. The core has no notion of debouncing; that's left to the adapter, since only the adapter knows about user interaction timing.
 
 ## License
 

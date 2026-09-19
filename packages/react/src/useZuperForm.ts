@@ -7,12 +7,7 @@ import {
   useSyncExternalStore,
 } from 'react'
 import z, { ZodObject } from 'zod'
-import {
-  createFormStore,
-  getAsyncDeps,
-  getAsyncFields,
-  reverseMapDeps,
-} from '@zupertools/form-core'
+import { createFormStore, reverseMapDeps } from '@zupertools/form-core'
 import type { Paths, PathValue } from '@zupertools/form-core'
 import { flattenPaths, getIn, getLeafValue } from '@zupertools/form-core'
 import { stringifyValue } from '@zupertools/form-core'
@@ -25,7 +20,7 @@ interface UseZuperFormProps<T extends ZodObject> {
   handler: (values: z.output<T>) => Promise<void>
   mode?: ValidationMode
   reValidateMode?: ValidationMode
-  asyncDebounceMs?: number
+  debounceMs?: number
   deps?: Partial<Record<Paths<z.input<T>>, Paths<z.input<T>>[]>>
 }
 
@@ -40,7 +35,7 @@ export function useZuperForm<T extends ZodObject>({
   handler,
   mode = 'onSubmit',
   reValidateMode = 'onChange',
-  asyncDebounceMs = 300,
+  debounceMs,
   deps,
 }: UseZuperFormProps<T>) {
   type InputValues = z.input<T>
@@ -48,10 +43,6 @@ export function useZuperForm<T extends ZodObject>({
   const store = storeRef.current
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [error, setTopLevelError] = useState<string | null>(null)
-
-  const asyncFieldsRef = useRef<Set<string>>(
-    getAsyncFields(schema, defaultValues),
-  )
 
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
@@ -64,10 +55,6 @@ export function useZuperForm<T extends ZodObject>({
   const reversedDeps = useMemo(
     () => (deps ? reverseMapDeps(deps) : undefined),
     [deps],
-  )
-
-  const asyncDepsRef = useRef<Set<string>>(
-    deps ? getAsyncDeps(schema, deps, defaultValues) : new Set<string>(),
   )
 
   const { values, errors, touched } = useSyncExternalStore(
@@ -92,13 +79,11 @@ export function useZuperForm<T extends ZodObject>({
 
   function debouncedValidateField<P extends Paths<InputValues>>(name: P) {
     clearTimeout(debounceTimers.current[name])
-    const isAsync =
-      asyncFieldsRef.current.has(name) || asyncDepsRef.current.has(name)
 
-    if (isAsync) {
+    if (debounceMs) {
       debounceTimers.current[name] = setTimeout(() => {
         store.validateField(name, deps?.[name])
-      }, asyncDebounceMs)
+      }, debounceMs)
     } else {
       store.validateField(name, deps?.[name])
     }
