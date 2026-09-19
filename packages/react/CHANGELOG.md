@@ -1,5 +1,16 @@
 # @zupertools/form-react
 
+## 0.4.0
+
+### Minor Changes
+
+- 44607b6: Finally removed buggy async refinements detection, so now a debounce value is always set manually if it's needed
+
+### Patch Changes
+
+- Updated dependencies [44607b6]
+  - @zupertools/form-core@0.4.0
+
 ## 0.3.2
 
 ### Patch Changes
