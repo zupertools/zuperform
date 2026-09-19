@@ -1,5 +1,11 @@
 # @zupertools/form-core
 
+## 0.4.0
+
+### Minor Changes
+
+- 44607b6: Finally removed buggy async refinements detection, so now a debounce value is always set manually if it's needed
+
 ## 0.3.2
 
 ### Patch Changes
